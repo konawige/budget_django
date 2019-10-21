@@ -1,0 +1,14 @@
+{% extends "mysite/base.html" %}
+{% block bootstrap4_content %}
+{% if bEnd %}Le fichier {{ f }} a bien été envoyé ! {% endif %}
+
+<h1>UPLOAD A NEW FILE</h1>
+   
+<p>
+    <form method="post" enctype="multipart/form-data" action="./add_new">
+       {% csrf_token %}
+       {{ form.as_p }}
+       <input type="submit"/>
+    </form>
+</p>
+{% endblock %}

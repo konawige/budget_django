@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": "/home/willy/Projects/venv_bdg/bin/python3",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "telemetry.enableTelemetry": false
+}
