@@ -8,7 +8,7 @@ from django.conf import settings
 from django.shortcuts import render
 
 from mysite import listRBCCol, inputFileName, cleanedCol, RET_GOOD
-from mysite.forms import FileForm
+from mysite.forms import FileForm, EntriesForm
 from mysite.models import Entries
 
 
@@ -37,9 +37,26 @@ def addEntries(request):
 
             # parse uploaded file to get list of transactions
             ret, data = parse_file(chBank,inputFileName)
-
             if ret == RET_GOOD:
-                pass
+                listData = []
+                i=0
+                nbRows = len(data.index)
+                while i<nbRows:
+                    form = EntriesForm()
+                    form.fields['amount'].initial = data.iloc[i]['Amount']
+                    form.fields['description'].initial = data.iloc[i]['Description']
+                    form.fields['date'].initial = data.iloc[i]['Date']
+                    listData.append(form)
+                    i = i+1
+
+                tabHead = ['Date','Account', 'Item','Amount','Description','Ignore']
+                
+
+                return render(request, 'mysite/confirm_entry.html', {'tabHead':tabHead,
+                'listData':listData})
+
+
+    
         
 
 
@@ -50,6 +67,17 @@ def addEntries(request):
         'bEnd': bEnd,
         'f': f
     })
+
+def ConfirmEntries(request):
+    form = EntriesForm(request.POST or None)
+
+    if form.is_valid():
+        pass
+
+    return render(request, 'mysite/confirm_entry.html', {
+        'form': form,
+    })
+
 
 def save_uploaded_file(f):
     folder = os.path.join(settings.MEDIA_ROOT,'data')

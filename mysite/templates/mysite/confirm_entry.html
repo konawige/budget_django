@@ -1,0 +1,24 @@
+{% extends "mysite/base.html" %}
+{% block bootstrap4_content %}
+
+<h1>YEAH!!!</h1>
+   
+<p>
+    <form method="post" enctype="multipart/form-data" action="./call_to">
+       {% csrf_token %}
+       <div>
+            {% for value in listData %}
+            <p>
+                    {{value.as_table}}
+            </p>
+            
+             
+            {% endfor %}
+       </div>
+
+      
+       <input type="submit"/>
+      
+    </form>
+</p>
+{% endblock %}

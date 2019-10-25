@@ -8,6 +8,8 @@ class FileForm(forms.Form):
 
 
 class EntriesForm(forms.ModelForm):
+    ignoreTransaction = forms.BooleanField(required=False, label="Discard transaction")
+
     class Meta:
         model = Entries
         fields = '__all__'
