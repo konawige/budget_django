@@ -4,12 +4,25 @@ import os
 from os.path import abspath
 
 import pandas as pd
+from bootstrap_modal_forms.generic import BSModalCreateView
 from django.conf import settings
-from django.shortcuts import render
+from django.forms.widgets import NumberInput
+from django.http import HttpResponseRedirect
+from django.shortcuts import redirect, render
+from django.urls import reverse, reverse_lazy
 
-from mysite import listRBCCol, inputFileName, cleanedCol, RET_GOOD
-from mysite.forms import FileForm, EntriesForm
-from mysite.models import Entries
+from mysite import RET_GOOD, cleanedCol, inputFileName, listRBCCol
+from mysite.forms import EntriesForm, FileForm
+from mysite.models import BdgItems, Entries
+
+from .forms import ItemForm
+
+
+class ItemCreateView(BSModalCreateView):
+    template_name = 'mysite/create_item.html'
+    form_class = ItemForm
+    success_message = 'Success: Item was created.'
+    success_url = reverse_lazy('confirm',args=[1])
 
 
 # Create your views here.
@@ -34,31 +47,7 @@ def addEntries(request):
 
         if f.name.endswith('.csv'):
             save_uploaded_file(f)
-
-            # parse uploaded file to get list of transactions
-            ret, data = parse_file(chBank,inputFileName)
-            if ret == RET_GOOD:
-                listData = []
-                i=0
-                nbRows = len(data.index)
-                while i<nbRows:
-                    form = EntriesForm()
-                    form.fields['amount'].initial = data.iloc[i]['Amount']
-                    form.fields['description'].initial = data.iloc[i]['Description']
-                    form.fields['date'].initial = data.iloc[i]['Date']
-                    listData.append(form)
-                    i = i+1
-
-                tabHead = ['Date','Account', 'Item','Amount','Description','Ignore']
-                
-
-                return render(request, 'mysite/confirm_entry.html', {'tabHead':tabHead,
-                'listData':listData})
-
-
-    
-        
-
+            return HttpResponseRedirect(reverse('confirm', args=[chBank]))
 
         bEnd = True
 
@@ -68,15 +57,40 @@ def addEntries(request):
         'f': f
     })
 
-def ConfirmEntries(request):
-    form = EntriesForm(request.POST or None)
+def ConfirmEntries(request,intBank):
 
-    if form.is_valid():
-        pass
+    # parse uploaded file to get list of transactions
+    ret, data = parse_file(intBank,inputFileName)
+    if ret == RET_GOOD:
+        listData = []
+        i=0
+        nbRows = len(data.index)
+        while i<nbRows:
+            form = EntriesForm(auto_id=True)
+            form.fields['amount'].initial = abs(data.iloc[i]['Amount'])                    
+            form.fields['description'].initial = data.iloc[i]['Description']                   
+            form.fields['date'].initial = data.iloc[i]['Date']
 
-    return render(request, 'mysite/confirm_entry.html', {
-        'form': form,
-    })
+            # modify id to make them unique
+            form.fields['amount'].widget.attrs['id'] = 'id_amount_' + str(i)
+            form.fields['description'].widget.attrs['id'] = 'id_description_' + str(i)
+            form.fields['date'].widget.attrs['id'] = 'id_date_' + str(i)
+            form.fields['accountType'].widget.attrs['id'] = 'id_type_' + str(i)
+            form.fields['item'].widget.attrs['id'] = 'id_item_' + str(i)
+            form.fields['ignoreTransaction'].widget.attrs['id'] = 'id_ignore_' + str(i)
+            listData.append(form)
+
+            if form.is_valid():
+                pass
+
+            i = i+1
+
+        tabHead = ['Date','Account', 'Item','Amount','Description','Ignore']
+        
+
+        return render(request, 'mysite/confirm_entry.html', {'tabHead':tabHead,
+        'listData':listData})
+
 
 
 def save_uploaded_file(f):
@@ -97,7 +111,7 @@ def parse_file(fBank, fName):
     rows, nbCol = data.shape
 
 
-    if fBank == '1':
+    if fBank == 1:
         if nbCol != len(listRBCCol):
             return 101, pd.DataFrame()
 
@@ -126,7 +140,3 @@ def parse_file(fBank, fName):
         data = data[cleanedCol]
 
         return 100, data
-
-
-
-    

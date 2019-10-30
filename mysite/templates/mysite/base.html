@@ -1,5 +1,16 @@
 {% extends "bootstrap4/bootstrap4.html" %}
+{% block bootstrap4_extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+{% endblock %}
 {% block bootstrap4_title %}WELCOME{% endblock %}
 {% block bootstrap4_before_content %}
 
 {% endblock %}
+
+{% block bootstrap4_extra_script %}
+{% load static %}
+<script src="{% static 'js/jquery.bootstrap.modal.forms.js' %}"></script>
+{% endblock %}
+
+

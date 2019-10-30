@@ -1,15 +1,20 @@
 {% extends "mysite/base.html" %}
 {% block bootstrap4_content %}
 
-<h1>YEAH!!!</h1>
+<div class="modal fade" tabindex="-1" role="dialog" id="modal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content"></div>
+    </div>
+</div>
    
 <p>
-    <form method="post" enctype="multipart/form-data" action="./call_to">
+    <form method="post" enctype="multipart/form-data" action="">
        {% csrf_token %}
        <div>
             {% for value in listData %}
             <p>
                     {{value.as_table}}
+                    <button style="margin-left: 10px;" class="create-item btn btn-primary" type="button" name="button"><i class="fa fa-plus-square"></i>Add item</button>
             </p>
             
              
@@ -22,3 +27,15 @@
     </form>
 </p>
 {% endblock %}
+
+{% block bootstrap4_extra_script %}
+{{ block.super }}
+<script type="text/javascript">
+    $(document).ready(function() {
+      // Create book button
+      $(".create-item").modalForm({formURL: "{% url 'create_item' %}"});
+    });
+  </script>
+
+{% endblock %}
+

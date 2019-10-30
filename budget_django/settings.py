@@ -18,6 +18,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA_ROOT = os.path.join(BASE_DIR, 'file/')
 MEDIA_URL = "/media/"
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR,'venv_bdg/lib/python3.7/site-packages/bootstrap_modal_forms/static'),
+]
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -42,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'mysite',
     'bootstrap4',
+    'bootstrap_modal_forms',
 ]
 
 MIDDLEWARE = [
