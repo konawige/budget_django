@@ -46,7 +46,7 @@ class BdgItems(models.Model):
 
 class Entries(models.Model):
     date = models.DateField()
-    amount = models.IntegerField()
+    amount = models.FloatField()
     description = models.CharField(max_length=64)
     accountType = models.ForeignKey('AccountTypes', on_delete=models.PROTECT)
     item = models.ForeignKey('BdgItems', on_delete=models.PROTECT)

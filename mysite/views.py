@@ -1,7 +1,9 @@
 
 
 import os
+from fnmatch import filter
 from os.path import abspath
+import datetime as dt
 
 import pandas as pd
 from bootstrap_modal_forms.generic import BSModalCreateView
@@ -13,9 +15,10 @@ from django.urls import reverse, reverse_lazy
 
 from mysite import RET_GOOD, cleanedCol, inputFileName, listRBCCol
 from mysite.forms import EntriesForm, FileForm
-from mysite.models import BdgItems, Entries
+from mysite.models import BdgItems, Entries, AccountTypes
 
 from .forms import ItemForm
+from django.forms import formset_factory
 
 
 class ItemCreateView(BSModalCreateView):
@@ -62,34 +65,36 @@ def ConfirmEntries(request,intBank):
     # parse uploaded file to get list of transactions
     ret, data = parse_file(intBank,inputFileName)
     if ret == RET_GOOD:
-        listData = []
-        i=0
         nbRows = len(data.index)
-        while i<nbRows:
-            form = EntriesForm(auto_id=True)
+        EntriesFormSet = formset_factory(EntriesForm, extra=nbRows-1)
+        formset = EntriesFormSet(request.POST or None)
+        i=0
+        for form in formset:
+            form.fields['item'].required = False
             form.fields['amount'].initial = abs(data.iloc[i]['Amount'])                    
-            form.fields['description'].initial = data.iloc[i]['Description']                   
-            form.fields['date'].initial = data.iloc[i]['Date']
+            form.fields['description'].initial = data.iloc[i]['Description']
+            form.fields['accountType'].initial = AccountTypes.objects.get(name=data.iloc[i]['Account'])
+            entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%m/%d/%Y")             
+            form.fields['date'].initial = "{}-{}-{}".format(entryDate.year, entryDate.month, entryDate.day)
 
-            # modify id to make them unique
-            form.fields['amount'].widget.attrs['id'] = 'id_amount_' + str(i)
-            form.fields['description'].widget.attrs['id'] = 'id_description_' + str(i)
-            form.fields['date'].widget.attrs['id'] = 'id_date_' + str(i)
-            form.fields['accountType'].widget.attrs['id'] = 'id_type_' + str(i)
-            form.fields['item'].widget.attrs['id'] = 'id_item_' + str(i)
-            form.fields['ignoreTransaction'].widget.attrs['id'] = 'id_ignore_' + str(i)
-            listData.append(form)
-
-            if form.is_valid():
-                pass
-
+            # check for duplicate
+            #form.fields['date'].initial,
+            if Entries.objects.filter(date= entryDate, amount__range=(form.fields['amount'].initial-0.5, form.fields['amount'].initial+0.5)):
+                form.fields['ignoreTransaction'].initial = True
+            
             i = i+1
 
-        tabHead = ['Date','Account', 'Item','Amount','Description','Ignore']
+        if formset.is_valid():
+            for elt in formset.cleaned_data:
+                if elt['ignoreTransaction'] == False:
+                    insert = Entries(date=elt['date'], amount=elt['amount'],description=elt['description'],
+                                     accountType=elt['accountType'], item=elt['item'])
+                    insert.save() 
+
+            return HttpResponseRedirect(reverse('view_all'))
         
 
-        return render(request, 'mysite/confirm_entry.html', {'tabHead':tabHead,
-        'listData':listData})
+        return render(request, 'mysite/confirm_entry.html', {'formset':formset, 'intBank':intBank})
 
 
 
@@ -108,7 +113,7 @@ def parse_file(fBank, fName):
     folder = os.path.join(settings.MEDIA_ROOT,'data')
 
     data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False)
-    rows, nbCol = data.shape
+    nbCol = data.shape[1]
 
 
     if fBank == 1:
@@ -117,7 +122,7 @@ def parse_file(fBank, fName):
 
         if 'Type de compte' in list(data.columns):
             #data['Type de compte'] = data['Type de compte'].astype(str).replace(pat='Chèques',repl='Debit',regex=False)
-            data['Type de compte'] = data['Type de compte'].astype(str).replace(to_replace='Chèques',value='Debit')
+            data['Type de compte'] = data['Type de compte'].astype(str).replace(to_replace='Chèques',value='debit')
             data = data.rename(columns={'Type de compte':'Account'})
         else:
             return 102, pd.DataFrame()

@@ -20,6 +20,7 @@ MEDIA_URL = "/media/"
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR,'venv_bdg/lib/python3.7/site-packages/bootstrap_modal_forms/static'),
+    os.path.join(BASE_DIR, "budget_django/mysite/static"),
 ]
 
 

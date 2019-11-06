@@ -1,8 +1,9 @@
 from django import forms
 from mysite import bankChoices
 from .models import Entries
-from .models import BdgItems
+from .models import BdgItems, AccountTypes
 from bootstrap_modal_forms.forms import BSModalForm
+
 
 class ItemForm(BSModalForm):
     class Meta:
@@ -15,9 +16,24 @@ class FileForm(forms.Form):
     inputFile = forms.FileField(label="Transaction file")
 
 
-class EntriesForm(forms.ModelForm):
+class EntriesForm(forms.Form):
+    date = forms.DateField()
+    accountType = forms.ModelChoiceField(queryset=AccountTypes.objects.all(), label="Account type")
+    item = forms.ModelChoiceField (queryset=BdgItems.objects.all(), required=False)   
+    amount = forms.FloatField()
+    description = forms.CharField()
     ignoreTransaction = forms.BooleanField(required=False, label="Discard transaction")
 
-    class Meta:
-        model = Entries
-        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super(EntriesForm, self).clean()
+        ign = cleaned_data.get('ignoreTransaction')
+        item = cleaned_data.get('item')
+
+        if (ign == False and item is None):  # if ignore is not checked and no tem is chosen, raise an error
+            raise forms.ValidationError(
+                    "Either discard transaction or choose item"
+            )
+
+        return cleaned_data  # return clean_data
+

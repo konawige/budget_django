@@ -8,14 +8,21 @@
 </div>
    
 <p>
-    <form method="post" enctype="multipart/form-data" action="">
+    <form method="post" enctype="multipart/form-data" action="{% url "confirm" intBank=intBank %}">
        {% csrf_token %}
        <div>
-            {% for value in listData %}
+          {{ formset.management_form }}
+            {% for value in formset %}
             <p>
                     {{value.as_table}}
                     <button style="margin-left: 10px;" class="create-item btn btn-primary" type="button" name="button"><i class="fa fa-plus-square"></i>Add item</button>
             </p>
+
+            {% if value.ignoreTransaction.initial %}
+              <p class="dup" >A similar entry already exits </p>
+              {% else %}
+              <br/>
+            {% endif %}
             
              
             {% endfor %}
