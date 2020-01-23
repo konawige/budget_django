@@ -3,34 +3,36 @@
 
 <div class="container">
     <div class="row">
-        <div class="col-xs-12 col-md-6">
+        <div class="col-xs-12 col-md-9">
             <h1>ENTRIES</h1>
             <div class="table-responsive">
-                <table class="table table-bordered">
+                <table class="table table-hover table-bordered">
                     <thead class="thead-dark">
                         <tr>
+                            <th scope="row">Date </th>
                             <th scope="row">Type</th>
                             <th scope="row">Category</th>
                             <th scope="row">Item</th>
-                            <th scope="row">Amount</th>
-                            <th scope="row">Date</th>
+                            <th scope="row">Description </th>
+                            <th scope="row">Amount </th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in all_entries %}
                         <tr>
+                            <td>{{ row.date }}</td>
                             <td>{{ row.item.bdgType.name }}</td>
                             <td>{{ row.item.category.name }}</td>
                             <td>{{ row.item.name }}</td>
-                            <td>{{ row.amount }}</td>
-                            <td>{{ row.date }}</td>
+                            <td>{{ row.description }}</td> 
+                            <td>{{ row.amount }}</td>                           
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
-        <div class="col-xs-12 col-md-6">
+        <div class="col-xs-12 col-md-3">
             <h1>MONTHLY STATUS</h1>
             <span><h2> Revenues </h2>  </span>
              <span><h2> Expenses </h2>  </span>

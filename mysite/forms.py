@@ -12,7 +12,8 @@ class ItemForm(BSModalForm):
 
 
 class FileForm(forms.Form):
-    bankName = forms.ChoiceField(choices=bankChoices, label='Bank')
+    listBank = [(k, v) for k, v in bankChoices.items()] 
+    bankName = forms.ChoiceField(choices=listBank, label='Bank')
     inputFile = forms.FileField(label="Transaction file")
 
 

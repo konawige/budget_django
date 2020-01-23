@@ -58,6 +58,16 @@ class Entries(models.Model):
         return "Entry"
 
 
+class DateEntries(models.Model):
+    date = models.DateField()
+    name = models.CharField(max_length=32)
+
+    class Meta:
+        verbose_name = "Last date checked"
+
+    def __str__(self):
+        return "Date Entry"
+
 
 
 
