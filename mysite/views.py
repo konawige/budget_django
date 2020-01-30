@@ -7,9 +7,10 @@ from fnmatch import filter
 from os.path import abspath
 
 import pandas as pd
+import numpy as np
 from bootstrap_modal_forms.generic import BSModalCreateView
 from django.conf import settings
-from django.db.models import ObjectDoesNotExist
+from django.db.models import Avg, Count, Min, ObjectDoesNotExist, Sum
 from django.forms import formset_factory
 from django.forms.widgets import NumberInput
 from django.http import HttpResponseRedirect
@@ -17,7 +18,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 
 from mysite import (RET_GOOD, bankChoices, cleanedCol, inputFileName,
-                    listNBCCol, listRBCCol)
+                    listDesjardinsCol, listNBCCol, listRBCCol)
 from mysite.forms import EntriesForm, FileForm
 from mysite.models import AccountTypes, BdgItems, DateEntries, Entries
 
@@ -36,9 +37,13 @@ def home(request):
     return render(request, 'mysite/base.html')
 
 def index(request):
-    """ Afficher tous les entrees dans la table """
-    entries = Entries.objects.order_by('-date') # Nous sélectionnons tous nos entrees
-    return render(request, 'mysite/index.html', {'all_entries': entries})
+    # select current month transaction
+    entries = Entries.objects.filter(date__year=dt.date.today().year, date__month=dt.date.today().month).order_by('-date')
+    dateEntries = DateEntries.objects.all()
+    currRev = entries.filter(item__bdgType__name='Revenue').aggregate(Sum('amount'))
+    currExp = entries.filter(item__bdgType__name='Expense').aggregate(Sum('amount'))
+
+    return render(request, 'mysite/index.html', {'all_entries': entries, 'all_date': dateEntries, 'rev': currRev['amount__sum'], 'exp': currExp['amount__sum']})
 
 def addEntries(request):
     """ Add new entries """
@@ -78,11 +83,14 @@ def ConfirmEntries(request,intBank):
             form.fields['amount'].initial = abs(data.iloc[i]['Amount'])                    
             form.fields['description'].initial = data.iloc[i]['Description']
             form.fields['accountType'].initial = AccountTypes.objects.get(name=data.iloc[i]['Account'])
-            #todo: transfrom date clumn in datetime in parse_file function
+            #todo: transfrom date column to datetime in parse_file function
             if intBank == 1:
                 entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%m/%d/%Y")
             elif intBank == 2:
                 entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%Y-%m-%d")
+            elif intBank == 3:
+                entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%Y/%m/%d")
+
             form.fields['date'].initial = "{}-{}-{}".format(entryDate.year, entryDate.month, entryDate.day)
 
             currentDate = entryDate.date()
@@ -126,6 +134,7 @@ def save_uploaded_file(f):
 def parse_file(fBank, fName):
     folder = os.path.join(settings.MEDIA_ROOT,'data')
 
+    #RBC
     if fBank == 1:
         data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False)
         nbCol = data.shape[1]
@@ -201,6 +210,33 @@ def parse_file(fBank, fName):
         data = data[cleanedCol]
 
         return 100, data
+
+    # Desjardins
+    elif fBank == 3:
+        
+        data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False, sep=',', header = 0, names=listDesjardinsCol)
+        nbCol = data.shape[1]
+        if nbCol != len(listDesjardinsCol):
+            return 101, pd.DataFrame()
+        
+        #convert to float and generate 'Amount' column
+        data['Debit'] = data['Debit'].astype(float)
+        data['Credit'] = data['Credit'].astype(float)
+
+        data['Debit'] = data['Debit'].replace(np.nan, 0)
+        data['Credit'] = data['Credit'].replace(np.nan, 0)
+        
+        data['Amount'] = data['Debit'] + data['Credit']
+
+        data['Account'] = 'debit'
+
+        #keep onley EOP row
+        data = data[data.Type == 'EOP']
+
+        data = data[cleanedCol]
+        return 100, data
+  
+        
 
 def update_db_date(intBank, typeAccount, lastDate):
     param_name = "{}-{}".format(bankChoices[intBank], typeAccount)

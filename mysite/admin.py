@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import BdgCategories, BdgItems, BdgTypes, Entries, AccountTypes
+
+from mysite.models import DateEntries
+
+from .models import AccountTypes, BdgCategories, BdgItems, BdgTypes, Entries
 
 
 # Register your models here.
@@ -21,3 +24,4 @@ admin.site.register(BdgCategories)
 admin.site.register(AccountTypes)
 admin.site.register(BdgItems, ItemAdmin)
 admin.site.register(Entries, EntriesAdmin)
+admin.site.register(DateEntries)
