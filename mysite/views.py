@@ -6,8 +6,8 @@ import re
 from fnmatch import filter
 from os.path import abspath
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from bootstrap_modal_forms.generic import BSModalCreateView
 from django.conf import settings
 from django.db.models import Avg, Count, Min, ObjectDoesNotExist, Sum
@@ -18,7 +18,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 
 from mysite import (RET_GOOD, bankChoices, cleanedCol, inputFileName,
-                    listDesjardinsCol, listNBCCol, listRBCCol)
+                    listDesjardinsCol, listNBCCol, listNBCColCredit,
+                    listRBCCol, listTangerineCol)
 from mysite.forms import EntriesForm, FileForm
 from mysite.models import AccountTypes, BdgItems, DateEntries, Entries
 
@@ -38,12 +39,13 @@ def home(request):
 
 def index(request):
     # select current month transaction
-    entries = Entries.objects.filter(date__year=dt.date.today().year, date__month=dt.date.today().month).order_by('-date')
+    entries = Entries.objects.filter(date__year=dt.date.today().year, date__month=dt.date.today().month)
+    last30Entries = Entries.objects.all().order_by('-date')[:30]
     dateEntries = DateEntries.objects.all()
     currRev = entries.filter(item__bdgType__name='Revenue').aggregate(Sum('amount'))
     currExp = entries.filter(item__bdgType__name='Expense').aggregate(Sum('amount'))
 
-    return render(request, 'mysite/index.html', {'all_entries': entries, 'all_date': dateEntries, 'rev': currRev['amount__sum'], 'exp': currExp['amount__sum']})
+    return render(request, 'mysite/index.html', {'last30Entries': last30Entries, 'all_entries': entries, 'all_date': dateEntries, 'rev': currRev['amount__sum'], 'exp': currExp['amount__sum']})
 
 def addEntries(request):
     """ Add new entries """
@@ -74,7 +76,8 @@ def ConfirmEntries(request,intBank):
     ret, data = parse_file(intBank,inputFileName)
     if ret == RET_GOOD:
         nbRows = len(data.index)
-        EntriesFormSet = formset_factory(EntriesForm, extra=nbRows-1)
+        EntriesFormSet = formset_factory(EntriesForm, extra=nbRows)
+        print(EntriesFormSet)
         formset = EntriesFormSet(request.POST or None)
         i=0
         maxDate = dt.date(2019, 1, 1)
@@ -84,11 +87,11 @@ def ConfirmEntries(request,intBank):
             form.fields['description'].initial = data.iloc[i]['Description']
             form.fields['accountType'].initial = AccountTypes.objects.get(name=data.iloc[i]['Account'])
             #todo: transfrom date column to datetime in parse_file function
-            if intBank == 1:
+            if intBank == 1 or intBank == 5:
                 entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%m/%d/%Y")
-            elif intBank == 2:
+            elif intBank == 2 or intBank == 3:
                 entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%Y-%m-%d")
-            elif intBank == 3:
+            elif intBank == 4:
                 entryDate = dt.datetime.strptime(str(data.iloc[i]['Date']),"%Y/%m/%d")
 
             form.fields['date'].initial = "{}-{}-{}".format(entryDate.year, entryDate.month, entryDate.day)
@@ -182,15 +185,6 @@ def parse_file(fBank, fName):
 
         if not 'Date' in list(data.columns):
             return 102, pd.DataFrame()
-        
-        # new data frame with split value columns 
-        new = data["Date"].str.split(";", expand = True) 
-  
-        # 
-        for i in range(6):
-            data[listNBCCol[i]] = new[i]
-        
-        #pd.to_datetime(data['Date'],infer_datetime_format=True)
 
         if "Debit" in list(data.columns) and "Credit" in list(data.columns):
             data['Debit'] = data['Debit'].astype(str).str.extract(r'(\d+[.]?\d*)', expand=True).astype(float)
@@ -211,10 +205,38 @@ def parse_file(fBank, fName):
 
         return 100, data
 
-    # Desjardins
+    # National bank, credit card
     elif fBank == 3:
+        data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False, sep=';')
+        nbCol = data.shape[1]
+        if nbCol != len(listNBCColCredit):
+            return 101, pd.DataFrame()
+
+        if not 'Date' in list(data.columns):
+            return 102, pd.DataFrame()
         
-        data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False, sep=',', header = 0, names=listDesjardinsCol)
+        if "Debit" in list(data.columns) and "Credit" in list(data.columns):
+            data['Debit'] = data['Debit'].astype(str).str.extract(r'(\d+[.]?\d*)', expand=True).astype(float)
+            data['Credit'] = data['Credit'].astype(str).str.extract(r'(\d+[.]?\d*)', expand=True).astype(float)
+            data['Amount'] = data['Debit'] + data['Credit']
+
+        else:
+            return 102, pd.DataFrame()
+
+        if 'Description' in list(data.columns) and 'Categorie' in list(data.columns):
+            data['Description'] = data['Description'].astype(str) + ' / '+ data['Categorie'].astype(str)
+        else:
+            return 102, pd.DataFrame()
+
+        data['Account'] = 'credit'
+
+        data = data[cleanedCol]
+
+        return 100, data
+    # Desjardins
+    elif fBank == 4:
+        
+        data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1',index_col=False, sep=',', names=listDesjardinsCol)
         nbCol = data.shape[1]
         if nbCol != len(listDesjardinsCol):
             return 101, pd.DataFrame()
@@ -230,13 +252,42 @@ def parse_file(fBank, fName):
 
         data['Account'] = 'debit'
 
-        #keep onley EOP row
+        #keep only EOP row
         data = data[data.Type == 'EOP']
 
         data = data[cleanedCol]
         return 100, data
   
+    # Tangerine
+    elif fBank == 5:
+        data = pd.read_csv(os.path.join(folder, fName),encoding='latin-1')
+        nbCol = data.shape[1]
+        if nbCol != len(listTangerineCol):
+            return 101, pd.DataFrame()
+
+        if not 'Date' in list(data.columns):
+            return 102, pd.DataFrame()
         
+        
+
+        if "Montant" in list(data.columns) :
+            data['Montant'] = data['Montant'].astype(str).str.extract(r'(\d+[.]?\d*)', expand=True).astype(float)
+            # replace column name
+            data = data.rename(columns={'Montant': 'Amount'})
+        else:
+            return 102, pd.DataFrame()
+
+        if 'Description' in list(data.columns):
+            data['Description'] = data['Description'].astype(str)
+        else:
+            return 102, pd.DataFrame()
+
+        data['Account'] = 'debit'
+
+        data = data[cleanedCol]
+
+        return 100, data
+    
 
 def update_db_date(intBank, typeAccount, lastDate):
     param_name = "{}-{}".format(bankChoices[intBank], typeAccount)

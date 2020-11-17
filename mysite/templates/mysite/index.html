@@ -18,8 +18,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for row in all_entries %}
-                        <tr>
+                        {% for row in last30Entries %}
+                            {% if row.item.bdgType.name == "Expense" %}
+                            <tr class="expense">
+                            {% else %}
+                            <tr class="revenue">
+                            {% endif %}
                             <td>{{ row.date }}</td>
                             <td>{{ row.item.bdgType.name }}</td>
                             <td>{{ row.item.category.name }}</td>

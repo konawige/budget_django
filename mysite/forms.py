@@ -38,3 +38,8 @@ class EntriesForm(forms.Form):
 
         return cleaned_data  # return clean_data
 
+# class DisplayForm(forms.Form):
+#     month = forms.ChoiceField()
+#     year = forms.ChoiceField(queryset=AccountTypes.objects.all(), label="Account type")
+#     cat = forms.ModelChoiceField (queryset=BdgItems.objects.all(), required=False)
+
