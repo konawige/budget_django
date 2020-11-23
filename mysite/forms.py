@@ -31,7 +31,7 @@ class EntriesForm(forms.Form):
         ign = cleaned_data.get('ignoreTransaction')
         item = cleaned_data.get('item')
 
-        if (ign == False and item is None):  # if ignore is not checked and no tem is chosen, raise an error
+        if (ign == False and item is None):  # if ignore is not checked and no item is chosen, raise an error
             raise forms.ValidationError(
                     "Either discard transaction or choose item"
             )
